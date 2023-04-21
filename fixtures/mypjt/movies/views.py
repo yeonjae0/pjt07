@@ -4,8 +4,9 @@ from django.shortcuts import render
 from django.http.response import JsonResponse, HttpResponse
 from .models import Actor, Movie, Review
 from django.core import serializers
-from .serializers import ActorSerializer,ActorDetailSerializer, MovieSerializer, ReviewSerializer
+from .serializers import ActorSerializer, ActorDetailSerializer, MovieSerializer, ReviewSerializer, MovieListSerializer, MovieDetailSerializer, ReviewDetailSerializer
 from django.shortcuts import get_object_or_404, get_list_or_404
+from rest_framework import status
 
 # Create your views here.
 
@@ -24,13 +25,13 @@ def actor_detail(request, pk):
 @api_view(['GET'])
 def movie_list(request):
     movies = Movie.objects.all()
-    serializer = MovieSerializer(movies, many=True)
+    serializer = MovieListSerializer(movies, many=True)
     return Response(serializer.data)
 
 @api_view(['GET'])
 def movie_detail(request, pk):
     movie = Movie.objects.get(pk=pk)
-    serializer = MovieSerializer(movie)
+    serializer = MovieDetailSerializer(movie)
     return Response(serializer.data)
 
 @api_view(['GET'])
@@ -45,8 +46,26 @@ def review_detail(request, pk):
     # review = Review.objects.get(pk=pk)
     review = get_object_or_404(Review, pk=pk)
     if request.method == 'GET':
-        serializer = ReviewSerializer(review)
+        serializer = ReviewDetailSerializer(review)
         return Response(serializer.data)
     
     elif request.method == 'DELETE':
         review.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    elif request.method == 'PUT':
+        serializer = ReviewDetailSerializer(review, data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data)
+    
+@api_view(['POST'])
+def create_review(request, pk):
+
+    movie = Movie.objects.get(pk=pk)
+    serializer = ReviewSerializer(data=request.data)
+
+    if serializer.is_valid(raise_exception=True):
+        serializer.save(movie=movie)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
